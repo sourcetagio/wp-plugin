@@ -3,7 +3,7 @@
  * Plugin Name: SourceTag
  * Plugin URI: https://sourcetag.io
  * Description: Lead attribution tracking. Captures UTM parameters, click IDs, and referrer data in your form submissions.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: SourceTag
  * Author URI: https://sourcetag.io
  * License: GPL-2.0-or-later
@@ -64,6 +64,7 @@ function sourcetag_register_settings() {
     ]);
     register_setting('sourcetag_settings', 'sourcetag_server_cookie', [
         'type' => 'boolean',
+        'sanitize_callback' => 'rest_sanitize_boolean',
         'default' => true,
     ]);
 }
