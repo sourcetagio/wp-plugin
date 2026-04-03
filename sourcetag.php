@@ -3,7 +3,7 @@
  * Plugin Name: SourceTag
  * Plugin URI: https://sourcetag.io
  * Description: Lead attribution tracking. Captures UTM parameters, click IDs, and referrer data in your form submissions.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: SourceTag
  * Author URI: https://sourcetag.io
  * License: GPL-2.0-or-later
@@ -38,6 +38,28 @@ $sourcetag_updater = PucFactory::buildUpdateChecker(
     'sourcetag'
 );
 $sourcetag_updater->getVcsApi()->enableReleaseAssets();
+
+/**
+ * Derive the root cookie domain from the site hostname.
+ * Matches the JS script's getCookieDomain() behaviour.
+ * e.g. "blog.example.com" → ".example.com"
+ */
+function sourcetag_get_cookie_domain() {
+    $host = wp_parse_url(home_url(), PHP_URL_HOST);
+    if (!$host) return '';
+    $parts = explode('.', $host);
+    if (count($parts) <= 2) return '.' . $host;
+    // Walk up from the hostname, skip likely public suffixes (co.uk, com.au, etc.)
+    for ($i = 1; $i < count($parts) - 1; $i++) {
+        $candidate = implode('.', array_slice($parts, $i));
+        $candidateParts = explode('.', $candidate);
+        if (count($candidateParts) === 2 && strlen($candidateParts[0]) <= 3) {
+            continue;
+        }
+        return '.' . $candidate;
+    }
+    return '.' . $host;
+}
 
 /**
  * Admin settings page
@@ -227,10 +249,13 @@ function sourcetag_refresh_cookie() {
         return;
     }
 
+    $cookie_domain = sourcetag_get_cookie_domain();
+
     // Re-set the attribution cookie via HTTP header with 400-day expiry
     setcookie($cookie_name, $safe_value, [
         'expires' => time() + (400 * 86400),
         'path' => '/',
+        'domain' => $cookie_domain,
         'secure' => is_ssl(),
         'httponly' => false,
         'samesite' => 'Lax',
@@ -240,6 +265,7 @@ function sourcetag_refresh_cookie() {
     setcookie($refresh_marker, '1', [
         'expires' => time() + 86400,
         'path' => '/',
+        'domain' => $cookie_domain,
         'secure' => is_ssl(),
         'httponly' => true,
         'samesite' => 'Lax',
@@ -305,6 +331,7 @@ function sourcetag_set_cookie_handler($request) {
     setcookie($cookie_name, $cookie_value, [
         'expires' => time() + (400 * 86400),
         'path' => '/',
+        'domain' => sourcetag_get_cookie_domain(),
         'secure' => is_ssl(),
         'httponly' => false,
         'samesite' => 'Lax',
@@ -355,13 +382,14 @@ function sourcetag_sanitise_cookie_value($value) {
     $value = urldecode($value);
 
     // JSON round-trip to strip any injected characters
-    $parsed = json_decode($value, true);
+    // Use json_decode without assoc flag to preserve JS objects ({} not [])
+    $parsed = json_decode($value);
     if ($parsed === null && $value !== 'null') {
         return false;
     }
 
-    // Re-encode to strip any injected characters
-    return wp_json_encode($parsed);
+    // Re-encode — JSON_UNESCAPED_SLASHES keeps landing page URLs clean
+    return wp_json_encode($parsed, JSON_UNESCAPED_SLASHES);
 }
 
 /**

@@ -4,7 +4,7 @@ Tags: attribution, utm, tracking, lead source, marketing
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -54,6 +54,11 @@ No. You add hidden fields to your forms yourself. SourceTag detects them and fil
 JavaScript cookies in these browsers expire after 7 days. The plugin's server-side cookie option (on by default) sets the cookie via PHP instead, which these browsers allow for up to 400 days.
 
 == Changelog ==
+
+= 1.0.2 =
+* Fix: cookie domain now set to root domain (matches JS script behaviour)
+* Fix: empty clickIds preserved as object, not array
+* Fix: landing page URLs no longer escaped with backslashes
 
 = 1.0.1 =
 * Fix: server-side cookie setting can now be properly unchecked
